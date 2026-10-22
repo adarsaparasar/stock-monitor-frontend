@@ -13,7 +13,11 @@ import {
 import './App.css';
 import { connectToStockUpdates } from './services/stockWebSocket';
 
-const API_URL = 'http://localhost:8080/api/stocks';
+
+
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/api/stocks`;
+
+
 const MAX_POINTS = 30;
 
 const RANGE_IN_MS = {
