@@ -14,10 +14,13 @@ import './App.css';
 import { connectToStockUpdates } from './services/stockWebSocket';
 
 
-const API_URL = `${
+
+const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  'https://stock-monitor-backend-tplo.onrender.com'
-}/api/stocks`;
+  'https://stock-monitor-backend-tplo.onrender.com';
+
+const API_URL = `${API_BASE_URL.replace(/\/+$/, '').replace(/^wss?:\/\//, 'https://').replace(/^http:\/\//, 'https://')}/api/stocks`;
+
 
 
 const MAX_POINTS = 30;
