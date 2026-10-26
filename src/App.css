@@ -1,59 +1,455 @@
 
+/* ==============================
+   Global Styles
+================================= */
+
 * {
   box-sizing: border-box;
 }
 
+:root {
+  font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #172033;
+  background: #f4f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f3f6fb;
-  color: #172033;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f4f7fb;
 }
 
-.stock-page {
-  min-height: 100vh;
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ==============================
+   Main Application
+================================= */
+
+.app {
+  width: min(1100px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 36px 0 56px;
+}
+
+/* ==============================
+   Dashboard Header
+================================= */
+
+.dashboard-header {
+  margin-bottom: 32px;
+  padding: 28px 32px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #10264b, #1d4ed8);
+  border-radius: 20px;
+  box-shadow: 0 12px 30px rgba(29, 78, 216, 0.15);
+}
+
+.dashboard-header h1 {
+  margin: 0 0 10px;
+  font-size: clamp(28px, 4vw, 38px);
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+
+.dashboard-header p {
+  margin: 0;
+  color: #dbeafe;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ==============================
+   Loading and Error Messages
+================================= */
+
+.app > p {
+  padding: 18px 20px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #526078;
+}
+
+.app > .error {
+  color: #b42318;
+  background: #fff1f0;
+  border-color: #fecaca;
+}
+
+/* ==============================
+   Chart Section
+================================= */
+
+.chart-section,
+.stocks-section {
+  margin-bottom: 28px;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e4eaf3;
+  border-radius: 18px;
+  box-shadow: 0 8px 28px rgba(20, 35, 60, 0.045);
+}
+
+.chart-section > h2,
+.stocks-section > h2 {
+  margin: 0 0 24px;
+  color: #172033;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+/* ==============================
+   IBM Stock Summary
+================================= */
+
+.selected-stock-summary {
+  margin-bottom: 28px;
+  padding: 24px;
+  background: #f8faff;
+  border: 1px solid #e2eaf7;
+  border-radius: 15px;
+}
+
+.selected-stock-summary h3 {
+  margin: 0 0 16px;
+  color: #526078;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.current-price {
+  margin: 0 0 12px;
+  color: #142d59;
+  font-size: clamp(36px, 6vw, 52px);
+  font-weight: 750;
+  line-height: 1.15;
+  letter-spacing: -1.8px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Daily price movement */
+
+.positive {
+  color: #15803d !important;
+}
+
+.negative {
+  color: #dc2626 !important;
+}
+
+.selected-stock-summary .positive,
+.selected-stock-summary .negative {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* ==============================
+   Time Range Buttons
+================================= */
+
+.time-range-selector {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.time-range-selector button {
+  min-width: 58px;
+  padding: 9px 16px;
+  color: #526078;
+  background: #ffffff;
+  border: 1px solid #dce4ef;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 650;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.time-range-selector button:hover {
+  color: #1d4ed8;
+  border-color: #93b4fc;
+  background: #eff6ff;
+}
+
+.time-range-selector button:active {
+  transform: scale(0.97);
+}
+
+.time-range-selector button.active {
+  color: #ffffff;
+  background: #2563eb;
+  border-color: #2563eb;
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.18);
+}
+
+.time-range-selector button:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+/* ==============================
+   Price Graph
+================================= */
+
+.chart-container {
+  width: 100%;
+  height: 350px;
+  min-width: 0;
+  margin: 10px 0 20px;
+}
+
+.chart-container > div {
+  width: 100%;
+}
+
+.chart-container svg {
+  overflow: visible;
+}
+
+.chart-container .recharts-cartesian-grid-horizontal line,
+.chart-container .recharts-cartesian-grid-vertical line {
+  stroke: #e8edf5;
+}
+
+.chart-container .recharts-cartesian-axis-line,
+.chart-container .recharts-cartesian-axis-tick-line {
+  stroke: #dbe3ef;
+}
+
+.chart-container .recharts-cartesian-axis-tick-value {
+  fill: #68758b;
+  font-size: 12px;
+}
+
+.chart-container .recharts-tooltip-wrapper {
+  outline: none;
+}
+
+.chart-container .recharts-default-tooltip {
+  padding: 12px 15px !important;
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 24px rgba(20, 35, 60, 0.1);
+}
+
+.chart-section > small {
+  display: block;
+  padding-top: 14px;
+  color: #778399;
+  border-top: 1px solid #edf0f5;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* Empty chart message */
+
+.chart-container > p {
+  display: flex;
+  min-height: 220px;
   align-items: center;
   justify-content: center;
-  padding: 24px;
-}
-
-.stock-card {
-  width: 100%;
-  max-width: 420px;
-  padding: 36px 28px;
-  text-align: center;
-  background: white;
-  border: 1px solid #e4e9f2;
-  border-radius: 20px;
-  box-shadow: 0 12px 35px rgba(20, 35, 60, 0.08);
-}
-
-.stock-label {
-  color: #586780;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-}
-
-.stock-card h1 {
-  margin: 20px 0;
-  font-size: 26px;
-}
-
-.stock-price {
-  margin: 12px 0;
-  font-size: clamp(36px, 10vw, 48px);
-  font-weight: 700;
-  letter-spacing: -1.5px;
-}
-
-.stock-note {
-  margin-top: 24px;
+  padding: 20px;
   color: #68758b;
-  font-size: 13px;
+  text-align: center;
+  line-height: 1.7;
 }
 
-.stock-error {
-  color: #b42318;
+/* ==============================
+   IBM Details Table
+================================= */
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e4eaf3;
+  border-radius: 12px;
+}
+
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.table-wrapper thead {
+  background: #f6f8fc;
+}
+
+.table-wrapper th {
+  padding: 15px 18px;
+  color: #647189;
+  border-bottom: 1px solid #e4eaf3;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.table-wrapper td {
+  padding: 18px;
+  color: #344158;
+  border-bottom: 1px solid #edf0f5;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.table-wrapper tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table-wrapper tbody tr {
+  transition: background 0.2s ease;
+}
+
+.table-wrapper tbody tr:hover {
+  background: #f8faff;
+}
+
+.table-wrapper td:first-child {
+  color: #1d4ed8;
+  font-weight: 750;
+}
+
+.table-wrapper td:nth-child(3),
+.table-wrapper td:nth-child(4),
+.table-wrapper td:nth-child(5) {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+/* ==============================
+   Responsive Design
+================================= */
+
+@media (max-width: 768px) {
+  .app {
+    width: calc(100% - 24px);
+    padding: 20px 0 36px;
+  }
+
+  .dashboard-header {
+    padding: 24px 20px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+  }
+
+  .chart-section,
+  .stocks-section {
+    padding: 20px 16px;
+    margin-bottom: 20px;
+    border-radius: 15px;
+  }
+
+  .chart-section > h2,
+  .stocks-section > h2 {
+    font-size: 19px;
+    line-height: 1.4;
+  }
+
+  .selected-stock-summary {
+    padding: 20px 16px;
+  }
+
+  .chart-container {
+    height: 290px;
+  }
+
+  .table-wrapper th,
+  .table-wrapper td {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app {
+    width: calc(100% - 20px);
+    padding-top: 14px;
+  }
+
+  .dashboard-header {
+    padding: 22px 18px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 27px;
+  }
+
+  .dashboard-header p {
+    font-size: 13px;
+  }
+
+  .chart-section,
+  .stocks-section {
+    padding: 18px 12px;
+  }
+
+  .chart-section > h2,
+  .stocks-section > h2 {
+    font-size: 17px;
+  }
+
+  .selected-stock-summary h3 {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .current-price {
+    font-size: 38px;
+  }
+
+  .time-range-selector {
+    gap: 6px;
+  }
+
+  .time-range-selector button {
+    min-width: 48px;
+    padding: 8px 11px;
+    font-size: 12px;
+  }
+
+  .chart-container {
+    height: 260px;
+  }
+
+  .table-wrapper th,
+  .table-wrapper td {
+    padding: 12px;
+    font-size: 12px;
+  }
+}
+
+/* ==============================
+   Reduced Motion Accessibility
+================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
