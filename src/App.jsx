@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 import {
   ResponsiveContainer,
@@ -9,37 +9,45 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-} from 'recharts';
+} from "recharts";
 
-import './App.css';
-import { connectToStockUpdates } from './services/stockWebSocket';
+import "./App.css";
+import { connectToStockUpdates } from "./services/stockWebSocket";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  'https://stock-monitor-backend-tplo.onrender.com';
+  "https://stock-monitor-backend-tplo.onrender.com";
 
 const API_URL = `${API_BASE_URL
-  .replace(/\/+$/, '')
-  .replace(/^wss?:\/\//, 'https://')
-  .replace(/^http:\/\//, 'https://')}/api/stocks`;
+  .replace(/\/+$/, "")
+  .replace(/^wss?:\/\//i, "https://")
+  .replace(/^http:\/\//i, "https://")}/api/stocks`;
 
-const STOCK_SYMBOL = 'IBM';
-const MAX_POINTS = 30;
+const STOCK_SYMBOL = "IBM";
 
-const RANGE_IN_MS = {
-  '1H': 60 * 60 * 1000,
-  '1D': 24 * 60 * 60 * 1000,
-  '1W': 7 * 24 * 60 * 60 * 1000,
-};
+const TIME_RANGES = ["1H", "1D", "1W"];
+
+function formatChartTime(timestamp) {
+  return new Date(timestamp).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function App() {
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [priceHistory, setPriceHistory] = useState([]);
-  const [timeRange, setTimeRange] = useState('1D');
+  const [error, setError] = useState("");
 
-  // Load IBM stock and its saved price history.
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+
+  const [timeRange, setTimeRange] = useState("1D");
+
+  // 1. Fetch the current stock details.
   useEffect(() => {
     let cancelled = false;
 
@@ -48,13 +56,13 @@ function App() {
         const response = await fetch(API_URL);
 
         if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+          throw new Error(`Stock request failed: ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!Array.isArray(data)) {
-          throw new Error('Expected an array of stocks');
+          throw new Error("Expected an array of stocks");
         }
 
         const ibmStocks = data.filter(
@@ -62,86 +70,20 @@ function App() {
             stock.symbol?.toUpperCase() === STOCK_SYMBOL
         );
 
-        if (cancelled) return;
-
-        setStocks(ibmStocks);
-
         if (ibmStocks.length === 0) {
           throw new Error(
-            'IBM was not found. Please ensure an IBM record exists in the backend database.'
+            "IBM was not found in the backend database."
           );
         }
-
-        const stock = ibmStocks[0];
-
-        // Fetch saved IBM price history.
-        let historyPoints = [];
-
-        try {
-          const historyResponse = await fetch(
-            `${API_URL}/${encodeURIComponent(STOCK_SYMBOL)}/history`
-          );
-
-          if (!historyResponse.ok) {
-            throw new Error(
-              `History request failed: ${historyResponse.status}`
-            );
-          }
-
-          const historyData = await historyResponse.json();
-
-          if (!Array.isArray(historyData)) {
-            throw new Error('Expected history to be an array');
-          }
-
-          historyPoints = historyData
-            .map((item) => {
-              const timestamp = new Date(item.recordedAt).getTime();
-
-              return {
-                time: new Date(timestamp).toLocaleTimeString(),
-                timestamp,
-                price: Number(item.price),
-              };
-            })
-            .filter(
-              (point) =>
-                Number.isFinite(point.timestamp) &&
-                Number.isFinite(point.price)
-            )
-            .sort((a, b) => a.timestamp - b.timestamp);
-        } catch (historyError) {
-          console.error(
-            'Failed to load IBM price history:',
-            historyError
-          );
-        }
-
-        if (cancelled) return;
-
-        // If history is empty, show the current price as one point.
-        if (historyPoints.length === 0) {
-          const price = Number(stock.price);
-
-          if (Number.isFinite(price)) {
-            const timestamp = Date.now();
-
-            historyPoints = [
-              {
-                time: new Date(timestamp).toLocaleTimeString(),
-                timestamp,
-                price,
-              },
-            ];
-          }
-        }
-
-        setPriceHistory(historyPoints.slice(-MAX_POINTS));
-      } catch (err) {
-        console.error('IBM stock fetch failed:', err);
 
         if (!cancelled) {
-          setError(err.message || 'Unable to load IBM stock data.');
+          setStocks(ibmStocks);
+          setError("");
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("IBM stock fetch failed:", err);
+          setError(err.message || "Unable to load IBM stock data.");
         }
       } finally {
         if (!cancelled) {
@@ -157,7 +99,76 @@ function App() {
     };
   }, []);
 
-  // Receive IBM-only live updates over WebSocket.
+  // 2. Fetch saved history whenever the selected range changes.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPriceHistory() {
+      setHistoryLoading(true);
+      setHistoryError("");
+
+      try {
+        const historyUrl =
+          `${API_URL}/${encodeURIComponent(STOCK_SYMBOL)}` +
+          `/history?range=${encodeURIComponent(timeRange)}`;
+
+        const response = await fetch(historyUrl);
+
+        if (!response.ok) {
+          throw new Error(
+            `History request failed: ${response.status}`
+          );
+        }
+
+        const historyData = await response.json();
+
+        if (!Array.isArray(historyData)) {
+          throw new Error("Expected history to be an array");
+        }
+
+        const historyPoints = historyData
+          .map((item) => {
+            const timestamp = new Date(item.recordedAt).getTime();
+
+            return {
+              time: formatChartTime(timestamp),
+              timestamp,
+              price: Number(item.price),
+            };
+          })
+          .filter(
+            (point) =>
+              Number.isFinite(point.timestamp) &&
+              Number.isFinite(point.price)
+          )
+          .sort((a, b) => a.timestamp - b.timestamp);
+
+        if (!cancelled) {
+          setPriceHistory(historyPoints);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load IBM price history:", err);
+          setHistoryError(
+            err.message || "Unable to load price history."
+          );
+          setPriceHistory([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setHistoryLoading(false);
+        }
+      }
+    }
+
+    loadPriceHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [timeRange]);
+
+  // 3. Receive live IBM price updates over WebSocket.
   useEffect(() => {
     const disconnect = connectToStockUpdates((updatedStock) => {
       if (
@@ -169,7 +180,7 @@ function App() {
       const price = Number(updatedStock.price);
 
       if (!Number.isFinite(price)) {
-        console.warn('Ignoring invalid IBM update:', updatedStock);
+        console.warn("Ignoring invalid IBM update:", updatedStock);
         return;
       }
 
@@ -183,17 +194,20 @@ function App() {
         )
       );
 
+      // Append the live price without discarding saved history.
       setPriceHistory((currentHistory) => {
         const updatedHistory = [
           ...currentHistory,
           {
-            time: new Date(timestamp).toLocaleTimeString(),
+            time: formatChartTime(timestamp),
             timestamp,
             price,
           },
         ];
 
-        return updatedHistory.slice(-MAX_POINTS);
+        return updatedHistory.sort(
+          (a, b) => a.timestamp - b.timestamp
+        );
       });
     });
 
@@ -202,19 +216,11 @@ function App() {
 
   const selectedStock = stocks[0];
 
-  const cutoffTime = Date.now() - RANGE_IN_MS[timeRange];
-
-  const filteredChartData = priceHistory.filter(
-    (point) =>
-      Number.isFinite(point.timestamp) &&
-      point.timestamp >= cutoffTime
-  );
-
   const currentPrice = Number(selectedStock?.price);
   const currentChange = Number(selectedStock?.change);
 
   const currentPercent = Number.parseFloat(
-    String(selectedStock?.changePercent ?? '').replace('%', '')
+    String(selectedStock?.changePercent ?? "").replace("%", "")
   );
 
   const priceIsValid =
@@ -227,28 +233,22 @@ function App() {
     selectedStock && Number.isFinite(currentPercent);
 
   const changeClass = !changeIsValid
-    ? ''
+    ? ""
     : currentChange > 0
-      ? 'positive'
+      ? "positive"
       : currentChange < 0
-        ? 'negative'
-        : '';
+        ? "negative"
+        : "";
 
-  const rowChangeClass = !changeIsValid
-    ? ''
-    : currentChange > 0
-      ? 'positive'
-      : currentChange < 0
-        ? 'negative'
-        : '';
+  const rowChangeClass = changeClass;
 
   const rowPercentClass = !percentIsValid
-    ? ''
+    ? ""
     : currentPercent > 0
-      ? 'positive'
+      ? "positive"
       : currentPercent < 0
-        ? 'negative'
-        : '';
+        ? "negative"
+        : "";
 
   return (
     <div className="app">
@@ -257,9 +257,7 @@ function App() {
         <p>IBM stock price, market movement, and price history.</p>
       </header>
 
-      {loading && (
-        <p>Loading IBM stock data and price history...</p>
-      )}
+      {loading && <p>Loading IBM stock data...</p>}
 
       {!loading && error && (
         <p className="error">{error}</p>
@@ -276,27 +274,27 @@ function App() {
               <p className="current-price">
                 {priceIsValid
                   ? `$${currentPrice.toFixed(2)}`
-                  : '—'}
+                  : "—"}
               </p>
 
               <p className={changeClass}>
                 {changeIsValid
-                  ? `${currentChange > 0 ? '+' : ''}${currentChange.toFixed(2)}`
-                  : '—'}
-                {' ('}
+                  ? `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(2)}`
+                  : "—"}
+                {" ("}
                 {percentIsValid
-                  ? `${currentPercent > 0 ? '+' : ''}${currentPercent.toFixed(4)}%`
-                  : '—'}
-                {')'}
+                  ? `${currentPercent > 0 ? "+" : ""}${currentPercent.toFixed(4)}%`
+                  : "—"}
+                {")"}
               </p>
             </div>
 
             <div className="time-range-selector">
-              {Object.keys(RANGE_IN_MS).map((range) => (
+              {TIME_RANGES.map((range) => (
                 <button
                   key={range}
                   type="button"
-                  className={timeRange === range ? 'active' : ''}
+                  className={timeRange === range ? "active" : ""}
                   aria-pressed={timeRange === range}
                   onClick={() => setTimeRange(range)}
                 >
@@ -306,9 +304,13 @@ function App() {
             </div>
 
             <div className="chart-container">
-              {filteredChartData.length > 0 ? (
+              {historyLoading ? (
+                <p>Loading {timeRange} price history...</p>
+              ) : historyError ? (
+                <p className="error">{historyError}</p>
+              ) : priceHistory.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={filteredChartData}>
+                  <LineChart data={priceHistory}>
                     <CartesianGrid strokeDasharray="3 3" />
 
                     <XAxis
@@ -317,7 +319,7 @@ function App() {
                     />
 
                     <YAxis
-                      domain={['auto', 'auto']}
+                      domain={["auto", "auto"]}
                       tickFormatter={(value) => `$${value}`}
                     />
 
@@ -325,7 +327,7 @@ function App() {
                       labelFormatter={(label) => `Time: ${label}`}
                       formatter={(value) => [
                         `$${Number(value).toFixed(2)}`,
-                        'IBM Price',
+                        "IBM Price",
                       ]}
                     />
 
@@ -335,7 +337,7 @@ function App() {
                       name="IBM"
                       stroke="#2563eb"
                       strokeWidth={2.5}
-                      dot={{ r: 3, fill: '#2563eb' }}
+                      dot={{ r: 3, fill: "#2563eb" }}
                       activeDot={{ r: 6 }}
                       isAnimationActive={false}
                     />
@@ -343,16 +345,15 @@ function App() {
                 </ResponsiveContainer>
               ) : (
                 <p>
-                  No IBM price points available for {timeRange}.
+                  No saved IBM price history available for {timeRange}.
                   Try a wider time range or wait for new updates.
                 </p>
               )}
             </div>
 
             <small>
-              Showing up to the latest {MAX_POINTS} saved and live
-              IBM price points. The selected range filters the
-              points currently loaded in the browser.
+              Showing saved IBM history for {timeRange}, plus live
+              updates received while this page is open.
             </small>
           </section>
 
@@ -374,27 +375,28 @@ function App() {
                 <tbody>
                   <tr key={selectedStock.id ?? STOCK_SYMBOL}>
                     <td>IBM</td>
+
                     <td>
                       {selectedStock.companyName ||
-                        'International Business Machines'}
+                        "International Business Machines"}
                     </td>
 
                     <td>
                       {priceIsValid
                         ? `$${currentPrice.toFixed(2)}`
-                        : '—'}
+                        : "—"}
                     </td>
 
                     <td className={rowChangeClass}>
                       {changeIsValid
-                        ? `${currentChange > 0 ? '+' : ''}${currentChange.toFixed(2)}`
-                        : '—'}
+                        ? `${currentChange > 0 ? "+" : ""}${currentChange.toFixed(2)}`
+                        : "—"}
                     </td>
 
                     <td className={rowPercentClass}>
                       {percentIsValid
-                        ? `${currentPercent > 0 ? '+' : ''}${currentPercent.toFixed(4)}%`
-                        : '—'}
+                        ? `${currentPercent > 0 ? "+" : ""}${currentPercent.toFixed(4)}%`
+                        : "—"}
                     </td>
                   </tr>
                 </tbody>
